@@ -9,7 +9,7 @@ router.use(requireAuth);
 
 const createSchema = z.object({
   propertyId: z.string().uuid(),
-  categoryId: z.string().min(1),
+  categoryIds: z.array(z.string().min(1)).min(1),
   hours: z.number().positive().max(24),
   note: z.string().max(2000).optional(),
   evidenceReference: z.string().max(2000).optional(),
@@ -21,10 +21,11 @@ const createSchema = z.object({
 router.post('/', async (req: AuthedRequest, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { propertyId, categoryId, hours, note, evidenceReference, entryDate } = parsed.data;
+  const { propertyId, categoryIds, hours, note, evidenceReference, entryDate } = parsed.data;
 
-  if (!findCategory(categoryId)) {
-    return res.status(400).json({ error: 'Unknown category id' });
+  const unknown = categoryIds.filter(id => !findCategory(id));
+  if (unknown.length > 0) {
+    return res.status(400).json({ error: `Unknown category id(s): ${unknown.join(', ')}` });
   }
 
   const property = await pool.query(
@@ -36,10 +37,10 @@ router.post('/', async (req: AuthedRequest, res) => {
   }
 
   const result = await pool.query(
-    `INSERT INTO log_entries (user_id, property_id, category_id, hours, note, evidence_reference, entry_date)
+    `INSERT INTO log_entries (user_id, property_id, category_ids, hours, note, evidence_reference, entry_date)
      VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, CURRENT_DATE))
-     RETURNING id, property_id, category_id, hours, note, evidence_reference, entry_date`,
-    [req.user!.id, propertyId, categoryId, hours, note || null, evidenceReference || null, entryDate || null]
+     RETURNING id, property_id, category_ids, hours, note, evidence_reference, entry_date`,
+    [req.user!.id, propertyId, JSON.stringify(categoryIds), hours, note || null, evidenceReference || null, entryDate || null]
   );
   res.status(201).json(result.rows[0]);
 });
@@ -47,7 +48,7 @@ router.post('/', async (req: AuthedRequest, res) => {
 router.get('/', async (req: AuthedRequest, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const result = await pool.query(
-    `SELECT le.id, le.property_id, p.name AS property_name, le.category_id, le.hours,
+    `SELECT le.id, le.property_id, p.name AS property_name, le.category_ids, le.hours,
             le.note, le.evidence_reference, le.entry_date
      FROM log_entries le
      JOIN properties p ON p.id = le.property_id
@@ -58,7 +59,7 @@ router.get('/', async (req: AuthedRequest, res) => {
   );
   res.json(result.rows.map(r => ({
     ...r,
-    category: findCategory(r.category_id) || null,
+    categories: (r.category_ids as string[]).map(findCategory).filter(Boolean),
   })));
 });
 

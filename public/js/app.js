@@ -14,14 +14,19 @@ const root = document.getElementById('root');
 let state = {
   screen: API.getToken() ? 'log' : 'auth',
   authMode: 'login', // 'login' | 'signup' | 'redeem'
-  selectedCategory: CATEGORIES[0].id,
+  selectedCategories: [CATEGORIES[0].id],
   hours: 1,
+  note: '',
+  evidence: '',
   properties: [],
   selectedProperty: null,
   entries: [],
   dashboard: null,
   addingProperty: false,
   error: '',
+  outlookConnected: null,
+  outlookEvents: [],
+  showOutlookEvents: false,
 };
 
 function render() {
@@ -151,10 +156,41 @@ function renderApp() {
   else renderDashboardScreen();
 }
 
+function renderOutlookSection() {
+  if (state.outlookConnected === null) return '';
+  if (!state.outlookConnected) {
+    return `
+      <div class="outlook-row">
+        <span class="outlook-text">Pull today's activity straight from your calendar.</span>
+        <a class="outlook-btn" href="${API.connectOutlookUrl()}">Connect Outlook</a>
+      </div>
+    `;
+  }
+  return `
+    <div class="outlook-row">
+      <span class="outlook-text">Outlook connected.</span>
+      <div class="outlook-btn" id="importOutlookBtn">${state.showOutlookEvents ? 'Hide events' : 'Import from Outlook'}</div>
+    </div>
+    ${state.showOutlookEvents ? `
+      <div class="outlook-events" id="outlookEventsList">
+        ${state.outlookEvents.length === 0 ? '<div class="empty">Loading recent events…</div>' : ''}
+        ${state.outlookEvents.map((e, i) => `
+          <div class="outlook-event" data-idx="${i}">
+            <div class="t">${escapeHtml(e.subject || '(no subject)')}</div>
+            <div class="d">${new Date(e.start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
 function renderLogScreen() {
   const content = document.getElementById('content');
   const noProps = state.properties.length === 0;
   content.innerHTML = `
+    <div class="log-grid">
+    <div class="log-col-left">
     <div class="title">Log today's work</div>
     <div class="sub">Pick a property, tap what you did, done.</div>
 
@@ -182,16 +218,20 @@ function renderLogScreen() {
       <button class="addbtn" id="addPropSubmit">Add</button>
     </div>
 
-    <span class="label" style="margin-top:16px; display:block;">What did you do</span>
+    ${renderOutlookSection()}
+
+    <span class="label" style="margin-top:16px; display:block;">What did you do (select all that apply)</span>
     <div id="catList">
       ${CATEGORIES.map(c => `
-        <div class="check ${state.selectedCategory === c.id ? 'sel' : ''}" data-cat="${c.id}">
+        <div class="check ${state.selectedCategories.includes(c.id) ? 'sel' : ''}" data-cat="${c.id}">
           <div style="flex:1;"><div class="name">${c.name}</div><div class="meta">${c.statute}</div></div>
-          <div class="radio"></div>
+          <div class="checkbox"></div>
         </div>
       `).join('')}
     </div>
+    </div>
 
+    <div class="log-col-right">
     <span class="label">Hours spent</span>
     <div class="stepper">
       <span style="font-size:12px; color:var(--w70);">Time on this activity</span>
@@ -203,12 +243,14 @@ function renderLogScreen() {
     </div>
 
     <span class="label">Note</span>
-    <textarea class="textarea" id="noteInput" rows="2" placeholder="One line on what you did…"></textarea>
+    <textarea class="textarea" id="noteInput" rows="2" placeholder="One line on what you did…">${escapeHtml(state.note)}</textarea>
     <span class="label">Evidence reference (optional)</span>
-    <textarea class="textarea" id="evidenceInput" rows="2" placeholder="e.g. calendar invite title, email subject"></textarea>
+    <textarea class="textarea" id="evidenceInput" rows="2" placeholder="e.g. calendar invite title, email subject">${escapeHtml(state.evidence)}</textarea>
 
     <button class="cta" id="saveBtn" ${!state.selectedProperty ? 'disabled' : ''}>${state.selectedProperty ? 'Save Entry' : 'Add a property to log hours'}</button>
     <div class="savemsg" id="saveMsg"></div>
+    </div>
+    </div>
   `;
 
   document.querySelectorAll('#pillrow .pill[data-id]').forEach(el => {
@@ -232,11 +274,45 @@ function renderLogScreen() {
     state.selectedProperty = created.id;
     renderLogScreen();
   };
+
+  const importBtn = document.getElementById('importOutlookBtn');
+  if (importBtn) {
+    importBtn.onclick = async () => {
+      state.showOutlookEvents = !state.showOutlookEvents;
+      if (state.showOutlookEvents && state.outlookEvents.length === 0) {
+        renderLogScreen();
+        try {
+          state.outlookEvents = await API.getOutlookEvents();
+        } catch (err) {
+          state.outlookEvents = [];
+        }
+      }
+      renderLogScreen();
+    };
+  }
+  document.querySelectorAll('.outlook-event').forEach(el => {
+    el.onclick = () => {
+      const event = state.outlookEvents[Number(el.dataset.idx)];
+      if (!event) return;
+      state.note = event.subject || '';
+      state.evidence = `Outlook calendar event: "${event.subject}"`;
+      state.showOutlookEvents = false;
+      renderLogScreen();
+    };
+  });
   document.querySelectorAll('#catList .check').forEach(el => {
-    el.onclick = () => { state.selectedCategory = el.dataset.cat; renderLogScreen(); };
+    el.onclick = () => {
+      const id = el.dataset.cat;
+      const i = state.selectedCategories.indexOf(id);
+      if (i === -1) state.selectedCategories.push(id);
+      else if (state.selectedCategories.length > 1) state.selectedCategories.splice(i, 1);
+      renderLogScreen();
+    };
   });
   document.getElementById('stepDown').onclick = () => { state.hours = Math.max(0.5, +(state.hours - 0.5).toFixed(1)); document.getElementById('stepVal').textContent = state.hours; };
   document.getElementById('stepUp').onclick = () => { state.hours = +(state.hours + 0.5).toFixed(1); document.getElementById('stepVal').textContent = state.hours; };
+  document.getElementById('noteInput').oninput = (e) => { state.note = e.target.value; };
+  document.getElementById('evidenceInput').oninput = (e) => { state.evidence = e.target.value; };
 
   const saveBtn = document.getElementById('saveBtn');
   if (state.selectedProperty) {
@@ -244,19 +320,24 @@ function renderLogScreen() {
       try {
         await API.addEntry({
           propertyId: state.selectedProperty,
-          categoryId: state.selectedCategory,
+          categoryIds: state.selectedCategories,
           hours: state.hours,
-          note: document.getElementById('noteInput').value,
-          evidenceReference: document.getElementById('evidenceInput').value,
+          note: state.note,
+          evidenceReference: state.evidence,
         });
-        document.getElementById('saveMsg').textContent = 'Entry saved';
-        document.getElementById('noteInput').value = '';
-        document.getElementById('evidenceInput').value = '';
         state.hours = 1;
-        setTimeout(() => { const m = document.getElementById('saveMsg'); if (m) m.textContent = ''; }, 2200);
+        state.selectedCategories = [CATEGORIES[0].id];
+        state.note = '';
+        state.evidence = '';
         renderLogScreen();
+        const m = document.getElementById('saveMsg');
+        if (m) {
+          m.textContent = 'Entry saved';
+          setTimeout(() => { const m2 = document.getElementById('saveMsg'); if (m2) m2.textContent = ''; }, 2200);
+        }
       } catch (err) {
-        document.getElementById('saveMsg').textContent = err.message;
+        const m = document.getElementById('saveMsg');
+        if (m) m.textContent = err.message;
       }
     };
   }
@@ -269,9 +350,12 @@ function renderDashboardScreen() {
 
   const circ = 2 * Math.PI * 30;
   content.innerHTML = `
+    <div class="dash-grid">
+    <div class="dash-col-left">
     <div class="title">${d.year} year to date</div>
     <div class="sub">Two tests. One clear picture.</div>
 
+    <div class="progress-panel">
     <div class="ring-row">
       <div class="ring-card">
         <div class="ring-wrap">
@@ -299,27 +383,36 @@ function renderDashboardScreen() {
       </div>
     </div>
 
+    <div class="panel-divider"></div>
+
     <div class="settings-row">
       <span style="font-size:11.5px; color:var(--w70);">Total annual working hours</span>
       <input class="num-input" type="number" id="baseInput" value="${d.annualBaseHours}" />
     </div>
 
-    <div class="pace">
-      ${d.paceDiff >= 0
-        ? `You're ${d.paceDiff} hours ahead of pace to hit 750 by December 31.`
-        : `You're ${Math.abs(d.paceDiff)} hours behind pace — worth catching up this month.`}
+    <div class="pace ${d.totalHours === 0 ? 'pace-neutral' : ''}">
+      ${d.totalHours === 0
+        ? 'Log your first activity on the Log tab to start tracking progress toward 750 hours.'
+        : d.paceDiff >= 0
+          ? `You're ${d.paceDiff} hours ahead of pace to hit 750 by December 31.`
+          : `You're ${Math.abs(d.paceDiff)} hours behind pace — worth catching up this month.`}
+    </div>
+    </div>
     </div>
 
+    <div class="dash-col-right">
     <span class="label">Recent activity</span>
     ${state.entries.length === 0 ? '<div class="empty">No entries logged yet.</div>' : ''}
     ${state.entries.slice(0, 8).map(e => `
       <div class="log-item">
-        <div class="log-detail"><div class="t">${e.category ? e.category.name : ''} — ${escapeHtml(e.property_name)}</div><div class="d">${e.entry_date}</div></div>
+        <div class="log-detail"><div class="t">${(e.categories || []).map(c => c.name).join(', ')} — ${escapeHtml(e.property_name)}</div><div class="d">${e.entry_date}</div></div>
         <div class="log-hrs">${e.hours}h</div>
       </div>
     `).join('')}
 
     <button class="export-btn" id="exportBtn" ${state.entries.length === 0 ? 'disabled' : ''}>Export year-end CPA packet</button>
+    </div>
+    </div>
   `;
 
   document.getElementById('baseInput').onchange = async (e) => {
@@ -355,6 +448,12 @@ function escapeHtml(str) {
       await loadProperties();
     } catch (err) {
       state.screen = 'auth';
+    }
+    try {
+      const status = await API.getOutlookStatus();
+      state.outlookConnected = status.connected;
+    } catch (err) {
+      state.outlookConnected = false;
     }
   }
   render();

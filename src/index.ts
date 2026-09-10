@@ -10,6 +10,7 @@ import propertiesRoutes from './routes/properties';
 import entriesRoutes from './routes/entries';
 import settingsRoutes from './routes/settings';
 import exportRoutes from './routes/export';
+import outlookRoutes from './routes/outlook';
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/properties', propertiesRoutes);
 app.use('/api/entries', entriesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/outlook', outlookRoutes);
 
 // Serve the PWA frontend
 app.use(express.static(path.join(__dirname, '..', 'public')));

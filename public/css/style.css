@@ -54,6 +54,9 @@ body{
 .check .meta{ font-size:10px; font-weight:300; color:var(--w50); margin-top:1px; }
 .radio{ width:16px; height:16px; border-radius:50%; border:1.5px solid var(--w30); flex-shrink:0; }
 .check.sel .radio{ border-color:var(--gold); background:var(--gold); }
+.checkbox{ width:16px; height:16px; border-radius:5px; border:1.5px solid var(--w30); flex-shrink:0; position:relative; }
+.check.sel .checkbox{ border-color:var(--gold); background:var(--gold); }
+.check.sel .checkbox::after{ content:''; position:absolute; left:4px; top:1px; width:5px; height:9px; border:solid var(--bg); border-width:0 2px 2px 0; transform:rotate(45deg); }
 .stepper{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; margin:16px 0; }
 .step-btn{ width:28px; height:28px; border-radius:50%; background:var(--panel); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; user-select:none; }
 .step-val{ font-family:'Playfair Display',serif; font-size:20px; font-weight:600; color:var(--gold-light); min-width:44px; text-align:center; }
@@ -61,15 +64,18 @@ body{
 .cta{ width:100%; background:var(--gold); color:var(--bg); font-size:13px; font-weight:600; letter-spacing:0.03em; padding:14px; border-radius:100px; text-align:center; border:none; cursor:pointer; }
 .cta:disabled{ opacity:0.5; cursor:default; }
 .savemsg{ text-align:center; font-size:11px; color:var(--gold-light); margin-top:10px; min-height:14px; }
-.ring-row{ display:flex; gap:12px; margin-bottom:16px; }
-.ring-card{ flex:1; background:var(--panel); border-radius:18px; padding:16px 12px; text-align:center; }
+.progress-panel{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:20px; margin-bottom:22px; }
+.panel-divider{ height:1px; background:var(--border); margin:18px 0; }
+.ring-row{ display:flex; gap:12px; margin-bottom:0; }
+.ring-card{ flex:1; background:var(--panel); border-radius:16px; padding:14px 10px 16px; text-align:center; }
+.settings-row{ display:flex; align-items:center; justify-content:space-between; background:transparent; border:none; padding:0; margin-bottom:14px; }
+.pace{ display:flex; align-items:center; gap:8px; background:rgba(216,170,110,0.09); border:1px solid rgba(216,170,110,0.28); border-radius:12px; padding:11px 12px; margin-bottom:0; font-size:11px; color:var(--w70); }
+.pace.pace-neutral{ background:var(--panel); border-color:var(--border); }
 .ring-wrap{ position:relative; width:76px; height:76px; margin:0 auto; }
 .ring-num{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:18px; font-weight:600; color:var(--gold-light); }
 .ring-title{ font-size:10.5px; font-weight:600; color:var(--w90); margin-top:8px; }
 .ring-sub{ font-size:9.5px; font-weight:300; color:var(--w50); margin-top:2px; }
-.settings-row{ display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; margin-bottom:14px; }
 .num-input{ width:70px; background:transparent; border:none; color:var(--gold-light); font-family:'Playfair Display',serif; font-size:16px; font-weight:600; text-align:right; outline:none; }
-.pace{ display:flex; align-items:center; gap:8px; background:rgba(216,170,110,0.09); border:1px solid rgba(216,170,110,0.28); border-radius:12px; padding:11px 12px; margin-bottom:18px; font-size:11px; color:var(--w70); }
 .log-item{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
 .log-item:last-child{ border-bottom:none; }
 .log-detail{ flex:1; min-width:0; }
@@ -87,3 +93,69 @@ body{
 .welcome .step{ display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; }
 .welcome .num{ width:20px; height:20px; border-radius:50%; background:rgba(216,170,110,0.15); border:1px solid rgba(216,170,110,0.4); color:var(--gold-light); font-size:10.5px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
 .welcome .step span{ font-size:12px; color:var(--w70); line-height:1.5; }
+
+/* ---- Desktop layout: sidebar nav + two-column content, instead of a phone card ---- */
+@media (min-width: 900px) {
+  body{ align-items:center; padding:48px 32px; }
+
+  .card{
+    max-width:1040px;
+    min-height:auto;
+    height:calc(100vh - 96px);
+    max-height:760px;
+    display:grid;
+    grid-template-columns:200px 1fr;
+    grid-template-rows:auto 1fr;
+    grid-template-areas:
+      "topbar topbar"
+      "tabbar content";
+  }
+  .auth-card{ max-width:460px; padding:40px 36px 30px; }
+
+  .topbar{ grid-area:topbar; padding:20px 28px; }
+  .brand-sm{ font-size:14px; }
+
+  .tabbar{
+    grid-area:tabbar;
+    flex-direction:column;
+    border-top:none;
+    border-right:1px solid var(--border);
+    justify-content:flex-start;
+    align-items:stretch;
+    padding:20px 14px;
+    gap:6px;
+    background:transparent;
+  }
+  .tab{
+    flex:none;
+    text-align:left;
+    padding:11px 16px;
+    border-radius:10px;
+    font-size:11px;
+  }
+  .tab.active{ background:rgba(216,170,110,0.12); }
+
+  .content{ padding:32px 40px; overflow-y:auto; }
+
+  .log-grid, .dash-grid{
+    display:grid;
+    grid-template-columns:1.15fr 0.85fr;
+    gap:40px;
+    align-items:start;
+  }
+  .log-col-left, .dash-col-left{ min-width:0; }
+  .log-col-right, .dash-col-right{ min-width:0; position:sticky; top:0; }
+
+  .ring-row{ gap:16px; }
+  .pillrow{ flex-wrap:wrap; }
+}
+
+.outlook-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px; margin-bottom:16px; }
+.outlook-text{ font-size:11px; color:var(--w70); }
+.outlook-btn{ font-size:11px; font-weight:600; color:var(--gold-light); background:rgba(216,170,110,0.12); border:1px solid rgba(216,170,110,0.35); border-radius:100px; padding:7px 14px; cursor:pointer; white-space:nowrap; text-decoration:none; }
+.outlook-events{ max-height:220px; overflow-y:auto; margin-bottom:16px; border:1px solid var(--border); border-radius:12px; }
+.outlook-event{ padding:10px 14px; border-bottom:1px solid var(--border); cursor:pointer; }
+.outlook-event:last-child{ border-bottom:none; }
+.outlook-event:hover{ background:var(--surface); }
+.outlook-event .t{ font-size:12px; color:var(--w90); font-weight:500; }
+.outlook-event .d{ font-size:10.5px; color:var(--w50); margin-top:2px; }

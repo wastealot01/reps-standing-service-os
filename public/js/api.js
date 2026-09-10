@@ -41,5 +41,9 @@ const API = (() => {
       const res = await fetch('/api/export/csv', { headers: { Authorization: `Bearer ${token}` } });
       return res.blob();
     },
+    getOutlookStatus: () => request('/outlook/status'),
+    connectOutlookUrl: () => `/api/outlook/connect?token=${encodeURIComponent(getToken())}`,
+    getOutlookEvents: () => request('/outlook/events'),
+    disconnectOutlook: () => request('/outlook/disconnect', { method: 'POST' }),
   };
 })();
