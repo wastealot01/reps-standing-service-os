@@ -24,3 +24,30 @@ export const CATEGORIES: Category[] = [
 export function findCategory(id: string): Category | undefined {
   return CATEGORIES.find(c => c.id === id);
 }
+
+// Keyword hints for auto-suggesting categories from a calendar event's
+// subject line. Deliberately loose (simple substring matching, not NLP) —
+// this only ever produces a *suggestion* the user still has to confirm,
+// never an auto-logged entry, so a false positive costs a click, not a
+// compliance problem.
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  inspection: ['inspect', 'walkthrough', 'walk-through', 'walk through', 'site visit', 'property tour', 'unit visit'],
+  financials: ['p&l', 'financial statement', 'financials', 'budget review', 'statement review'],
+  leasing: ['lease', 'leasing', 'showing', 'tenant', 'move-in', 'move in', 'move-out', 'move out', 'renewal'],
+  vendor: ['vendor', 'contractor', 'repair', 'maintenance', 'quote', 'bid walk'],
+  acquisition: ['underwriting', 'due diligence', 'acquisition', 'closing', 'purchase agreement'],
+  construction: ['construction', 'renovation', 'capital improvement', 'capex', 'contractor walk'],
+  financing: ['lender', 'loan', 'refinance', 'financing', 'mortgage'],
+  investor: ['investor call', 'partner meeting', 'owner meeting', 'asset management', 'investor update'],
+  staff: ['property manager', 'pm call', 'staff meeting', 'supervision', 'onsite team'],
+};
+
+export function suggestCategoriesForText(text: string): string[] {
+  const lower = (text || '').toLowerCase();
+  const matches: string[] = [];
+  for (const category of CATEGORIES) {
+    const keywords = CATEGORY_KEYWORDS[category.id] || [];
+    if (keywords.some(k => lower.includes(k))) matches.push(category.id);
+  }
+  return matches;
+}

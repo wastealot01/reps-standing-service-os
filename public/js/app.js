@@ -28,6 +28,8 @@ let state = {
   outlookConnected: null,
   outlookEvents: [],
   showOutlookEvents: false,
+  outlookSuggestions: [],
+  pendingSuggestionId: null,
   saveStatus: '',
   saveMsgText: '',
   showWalkthrough: false,
@@ -261,6 +263,35 @@ function renderApp() {
   else renderDashboardScreen();
 }
 
+function renderSuggestionsSection() {
+  if (!state.outlookConnected || state.outlookSuggestions.length === 0) return '';
+  return `
+    <div class="suggest-panel">
+      <div class="suggest-header">Suggested from your calendar (${state.outlookSuggestions.length})</div>
+      ${state.outlookSuggestions.map((s, i) => `
+        <div class="suggest-item">
+          <div class="suggest-info">
+            <div class="t">${escapeHtml(s.subject || '(no subject)')}</div>
+            <div class="d">${new Date(s.event_start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              ${s.suggested_category_ids && s.suggested_category_ids.length > 0
+                ? ' · ' + s.suggested_category_ids.map(id => { const c = findLocalCategory(id); return c ? c.name : id; }).join(', ')
+                : ' · no category match, pick manually'}
+            </div>
+          </div>
+          <div class="suggest-actions">
+            <div class="suggest-use" data-idx="${i}">Log this</div>
+            <div class="suggest-dismiss" data-dismiss-idx="${i}">×</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function findLocalCategory(id) {
+  return CATEGORIES.find(c => c.id === id);
+}
+
 function renderOutlookSection() {
   if (state.outlookConnected === null) return '';
   if (!state.outlookConnected) {
@@ -323,6 +354,7 @@ function renderLogScreen() {
       <button class="addbtn" id="addPropSubmit">Add</button>
     </div>
 
+    ${renderSuggestionsSection()}
     ${renderOutlookSection()}
 
     <span class="label" style="margin-top:16px; display:block;">What did you do (select all that apply)</span>
@@ -414,6 +446,32 @@ function renderLogScreen() {
       renderLogScreen();
     };
   });
+  document.querySelectorAll('.suggest-use').forEach(el => {
+    el.onclick = () => {
+      const s = state.outlookSuggestions[Number(el.dataset.idx)];
+      if (!s) return;
+      state.note = s.subject || '';
+      state.evidence = `Outlook calendar event: "${s.subject}"`;
+      const eventDate = new Date(s.event_start).toISOString().slice(0, 10);
+      const today = new Date().toISOString().slice(0, 10);
+      state.entryDate = eventDate <= today ? eventDate : today;
+      if (s.suggested_category_ids && s.suggested_category_ids.length > 0) {
+        state.selectedCategories = s.suggested_category_ids.slice();
+      }
+      state.pendingSuggestionId = s.id;
+      renderLogScreen();
+    };
+  });
+  document.querySelectorAll('.suggest-dismiss').forEach(el => {
+    el.onclick = async (e) => {
+      e.stopPropagation();
+      const s = state.outlookSuggestions[Number(el.dataset.dismissIdx)];
+      if (!s) return;
+      state.outlookSuggestions = state.outlookSuggestions.filter(x => x.id !== s.id);
+      renderLogScreen();
+      try { await API.dismissOutlookSuggestion(s.id); } catch (err) {}
+    };
+  });
   document.querySelectorAll('#catList .check').forEach(el => {
     el.onclick = () => {
       const id = el.dataset.cat;
@@ -441,6 +499,12 @@ function renderLogScreen() {
           evidenceReference: state.evidence,
           entryDate: state.entryDate,
         });
+        if (state.pendingSuggestionId) {
+          const approvedId = state.pendingSuggestionId;
+          state.outlookSuggestions = state.outlookSuggestions.filter(s => s.id !== approvedId);
+          state.pendingSuggestionId = null;
+          API.approveOutlookSuggestion(approvedId).catch(() => {});
+        }
         state.hours = 1;
         state.selectedCategories = [CATEGORIES[0].id];
         state.note = '';
@@ -573,6 +637,9 @@ function escapeHtml(str) {
     try {
       const status = await API.getOutlookStatus();
       state.outlookConnected = status.connected;
+      if (state.outlookConnected) {
+        state.outlookSuggestions = await API.getOutlookSuggestions();
+      }
     } catch (err) {
       state.outlookConnected = false;
     }

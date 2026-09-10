@@ -45,5 +45,8 @@ const API = (() => {
     connectOutlookUrl: () => `/api/outlook/connect?token=${encodeURIComponent(getToken())}`,
     getOutlookEvents: () => request('/outlook/events'),
     disconnectOutlook: () => request('/outlook/disconnect', { method: 'POST' }),
+    getOutlookSuggestions: () => request('/outlook/suggestions'),
+    dismissOutlookSuggestion: (id) => request(`/outlook/suggestions/${id}/dismiss`, { method: 'POST' }),
+    approveOutlookSuggestion: (id) => request(`/outlook/suggestions/${id}/approve`, { method: 'POST' }),
   };
 })();

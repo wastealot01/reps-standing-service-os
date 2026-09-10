@@ -7,11 +7,11 @@ import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 
+export const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
 const MS_AUTHORIZE_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
-const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
-const MS_SCOPES = 'offline_access Calendars.Read';
+export const MS_SCOPES = 'offline_access Calendars.Read';
 
-function requireMsConfig() {
+export function requireMsConfig() {
   if (!process.env.MS_CLIENT_ID || !process.env.MS_CLIENT_SECRET || !process.env.MS_REDIRECT_URI) {
     throw new Error('Microsoft OAuth is not configured (MS_CLIENT_ID / MS_CLIENT_SECRET / MS_REDIRECT_URI)');
   }
@@ -111,7 +111,7 @@ router.post('/disconnect', requireAuth, asyncHandler(async (req: AuthedRequest, 
 }));
 
 // Refreshes an access token from the stored encrypted refresh token.
-async function getAccessToken(userId: string): Promise<string | null> {
+export async function getAccessToken(userId: string): Promise<string | null> {
   const result = await pool.query('SELECT ms_refresh_token_encrypted FROM users WHERE id = $1', [userId]);
   const encrypted = result.rows[0]?.ms_refresh_token_encrypted;
   if (!encrypted) return null;
@@ -176,5 +176,38 @@ router.get('/events', requireAuth, async (req: AuthedRequest, res) => {
     res.status(500).json({ error: 'Could not read Outlook calendar' });
   }
 });
+
+// Suggestions pulled automatically in the background — see
+// src/services/outlookSync.ts. Never auto-logged, always pending review.
+router.get('/suggestions', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
+  const result = await pool.query(
+    `SELECT id, subject, event_start, event_end, suggested_category_ids
+     FROM outlook_suggestions
+     WHERE user_id = $1 AND status = 'pending'
+     ORDER BY event_start DESC
+     LIMIT 25`,
+    [req.user!.id]
+  );
+  res.json(result.rows);
+}));
+
+router.post('/suggestions/:id/dismiss', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
+  await pool.query(
+    "UPDATE outlook_suggestions SET status = 'dismissed' WHERE id = $1 AND user_id = $2",
+    [req.params.id, req.user!.id]
+  );
+  res.status(204).send();
+}));
+
+// Marks a suggestion approved once the user has actually saved the real
+// log entry from it — bookkeeping only, the entry itself is created via
+// the normal POST /api/entries route so it goes through the same validation.
+router.post('/suggestions/:id/approve', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
+  await pool.query(
+    "UPDATE outlook_suggestions SET status = 'approved' WHERE id = $1 AND user_id = $2",
+    [req.params.id, req.user!.id]
+  );
+  res.status(204).send();
+}));
 
 export default router;

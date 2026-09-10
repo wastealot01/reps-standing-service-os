@@ -11,6 +11,7 @@ import entriesRoutes from './routes/entries';
 import settingsRoutes from './routes/settings';
 import exportRoutes from './routes/export';
 import outlookRoutes from './routes/outlook';
+import { syncAllConnectedUsers } from './services/outlookSync';
 
 const app = express();
 
@@ -44,3 +45,11 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`REPS Standing listening on port ${port}`));
+
+// Background Outlook calendar sync — pulls new events for every connected
+// user and turns them into pending suggestions, never auto-logged entries.
+// A few minutes after boot (let the app finish starting first), then every
+// 3 hours. A failed run never crashes the process, see syncAllConnectedUsers.
+const SYNC_INTERVAL_MS = 3 * 60 * 60 * 1000;
+setTimeout(() => syncAllConnectedUsers(), 60 * 1000);
+setInterval(() => syncAllConnectedUsers(), SYNC_INTERVAL_MS);
