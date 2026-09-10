@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../db/pool';
 import { AuthedRequest, requireAuth } from '../middleware/auth';
 import { encrypt, decrypt } from '../services/crypto';
+import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 
@@ -88,19 +89,19 @@ router.get('/callback', async (req, res) => {
   }
 });
 
-router.get('/status', requireAuth, async (req: AuthedRequest, res) => {
+router.get('/status', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
   const result = await pool.query('SELECT ms_connected_at FROM users WHERE id = $1', [req.user!.id]);
   const connectedAt = result.rows[0]?.ms_connected_at || null;
   res.json({ connected: !!connectedAt, connectedAt });
-});
+}));
 
-router.post('/disconnect', requireAuth, async (req: AuthedRequest, res) => {
+router.post('/disconnect', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
   await pool.query(
     'UPDATE users SET ms_refresh_token_encrypted = NULL, ms_connected_at = NULL WHERE id = $1',
     [req.user!.id]
   );
   res.status(204).send();
-});
+}));
 
 // Refreshes an access token from the stored encrypted refresh token.
 async function getAccessToken(userId: string): Promise<string | null> {

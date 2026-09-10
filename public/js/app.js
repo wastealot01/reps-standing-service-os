@@ -29,6 +29,8 @@ let state = {
   showOutlookEvents: false,
   saveStatus: '',
   saveMsgText: '',
+  showWalkthrough: false,
+  walkthroughStep: 0,
 };
 
 function render() {
@@ -101,6 +103,9 @@ function renderAuth() {
       state.screen = 'log';
       state.error = '';
       await loadProperties();
+      let seenWalkthrough = false;
+      try { seenWalkthrough = !!localStorage.getItem('reps-walkthrough-seen'); } catch (e) {}
+      if (!seenWalkthrough) { state.showWalkthrough = true; state.walkthroughStep = 0; }
       render();
     } catch (err) {
       state.error = err.message;
@@ -132,12 +137,75 @@ async function loadDashboard() {
   state.entries = await API.getEntries();
 }
 
+const WALKTHROUGH_STEPS = [
+  {
+    title: 'Welcome to REPS Standing',
+    body: 'This tracks your hours toward Real Estate Professional Status, the IRS test that lets your rental losses offset other income if you clear 750 hours a year and materially participate. A quick tour, four steps.',
+  },
+  {
+    title: 'Add your property',
+    body: 'On the Log tab, tap "+ Add property" and name the deal you\'re invested in. You only do this once per property, then it\'s there every time you log hours.',
+  },
+  {
+    title: 'Log activity in seconds',
+    body: 'Check off everything you did, more than one is fine, dial in the hours, and add a quick note. If Outlook is connected, you can pull the note straight from a real calendar event instead of typing it.',
+  },
+  {
+    title: 'Watch your progress',
+    body: 'The Dashboard tab shows both IRS tests at a glance and tells you if you\'re ahead of or behind pace for 750 hours. At year end, export a CPA-ready report in one tap.',
+  },
+];
+
+function renderWalkthrough() {
+  const step = WALKTHROUGH_STEPS[state.walkthroughStep];
+  const isLast = state.walkthroughStep === WALKTHROUGH_STEPS.length - 1;
+  return `
+    <div class="wt-overlay" id="wtOverlay">
+      <div class="wt-modal">
+        <div class="wt-dots">
+          ${WALKTHROUGH_STEPS.map((_, i) => `<div class="wt-dot ${i === state.walkthroughStep ? 'active' : ''}"></div>`).join('')}
+        </div>
+        <div class="wt-title">${step.title}</div>
+        <div class="wt-body">${step.body}</div>
+        <div class="wt-actions">
+          <div class="wt-skip" id="wtSkip">${isLast ? '' : 'Skip'}</div>
+          <div style="display:flex; gap:8px;">
+            ${state.walkthroughStep > 0 ? '<div class="wt-btn wt-btn-secondary" id="wtBack">Back</div>' : ''}
+            <div class="wt-btn" id="wtNext">${isLast ? 'Done' : 'Next'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function closeWalkthrough() {
+  state.showWalkthrough = false;
+  try { localStorage.setItem('reps-walkthrough-seen', '1'); } catch (e) {}
+  renderApp();
+}
+
+function bindWalkthroughEvents() {
+  const skip = document.getElementById('wtSkip');
+  if (skip) skip.onclick = closeWalkthrough;
+  const back = document.getElementById('wtBack');
+  if (back) back.onclick = () => { state.walkthroughStep -= 1; renderApp(); };
+  const next = document.getElementById('wtNext');
+  if (next) next.onclick = () => {
+    if (state.walkthroughStep === WALKTHROUGH_STEPS.length - 1) closeWalkthrough();
+    else { state.walkthroughStep += 1; renderApp(); }
+  };
+}
+
 function renderApp() {
   root.innerHTML = `
     <div class="card">
       <div class="topbar">
         <div class="brand-sm">${markSvg(13)} REPS Standing</div>
-        <div class="profile-btn" id="logoutBtn">Log out</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="help-btn" id="helpBtn" title="How to use REPS Standing">?</div>
+          <div class="profile-btn" id="logoutBtn">Log out</div>
+        </div>
       </div>
       <div class="content" id="content"></div>
       <div class="tabbar">
@@ -145,8 +213,10 @@ function renderApp() {
         <div class="tab ${state.screen === 'dashboard' ? 'active' : ''}" data-screen="dashboard">DASHBOARD</div>
       </div>
     </div>
+    ${state.showWalkthrough ? renderWalkthrough() : ''}
   `;
   document.getElementById('logoutBtn').onclick = () => { API.clearToken(); state.screen = 'auth'; render(); };
+  document.getElementById('helpBtn').onclick = () => { state.walkthroughStep = 0; state.showWalkthrough = true; renderApp(); };
   document.querySelectorAll('.tab').forEach(el => {
     el.onclick = async () => {
       state.screen = el.dataset.screen;
@@ -154,6 +224,8 @@ function renderApp() {
       render();
     };
   });
+
+  if (state.showWalkthrough) bindWalkthroughEvents();
 
   if (state.screen === 'log') renderLogScreen();
   else renderDashboardScreen();

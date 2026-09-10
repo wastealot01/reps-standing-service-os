@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db/pool';
 import { AuthedRequest, requireAuth } from '../middleware/auth';
 import { findCategory } from '../categories';
+import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 router.use(requireAuth);
@@ -10,7 +11,7 @@ function csvEscape(value: string | null | undefined): string {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
 
-router.get('/csv', async (req: AuthedRequest, res) => {
+router.get('/csv', asyncHandler(async (req: AuthedRequest, res) => {
   const year = Number(req.query.year) || new Date().getFullYear();
 
   const result = await pool.query(
@@ -44,6 +45,6 @@ router.get('/csv', async (req: AuthedRequest, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename="REPS-Standing-${year}.csv"`);
   res.send(csv);
-});
+}));
 
 export default router;

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { pool } from '../db/pool';
 import { AuthedRequest, requireAuth } from '../middleware/auth';
 import { findCategory } from '../categories';
+import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 router.use(requireAuth);
@@ -18,7 +19,7 @@ const createSchema = z.object({
 
 // Every entry is scoped to req.user.id, never the household — hours must never
 // mix between spouses. This is the compliance-critical line in this file.
-router.post('/', async (req: AuthedRequest, res) => {
+router.post('/', asyncHandler(async (req: AuthedRequest, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const { propertyId, categoryIds, hours, note, evidenceReference, entryDate } = parsed.data;
@@ -43,9 +44,9 @@ router.post('/', async (req: AuthedRequest, res) => {
     [req.user!.id, propertyId, JSON.stringify(categoryIds), hours, note || null, evidenceReference || null, entryDate || null]
   );
   res.status(201).json(result.rows[0]);
-});
+}));
 
-router.get('/', async (req: AuthedRequest, res) => {
+router.get('/', asyncHandler(async (req: AuthedRequest, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const result = await pool.query(
     `SELECT le.id, le.property_id, p.name AS property_name, le.category_ids, le.hours,
@@ -61,11 +62,11 @@ router.get('/', async (req: AuthedRequest, res) => {
     ...r,
     categories: (r.category_ids as string[]).map(findCategory).filter(Boolean),
   })));
-});
+}));
 
 // Computed dashboard numbers — the two threshold tests plus pace, all derived
 // server-side so the frontend never has to re-implement the math.
-router.get('/dashboard', async (req: AuthedRequest, res) => {
+router.get('/dashboard', asyncHandler(async (req: AuthedRequest, res) => {
   const year = new Date().getFullYear();
 
   const totals = await pool.query(
@@ -96,6 +97,6 @@ router.get('/dashboard', async (req: AuthedRequest, res) => {
     pctTimeshare: Math.round(pctTimeshare),
     paceDiff,
   });
-});
+}));
 
 export default router;

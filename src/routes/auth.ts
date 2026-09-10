@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { pool } from '../db/pool';
+import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 
@@ -27,7 +28,7 @@ const signupSchema = z.object({
 
 // Creates a brand new household with this user as the primary account.
 // Returns an invite code the primary can share with a spouse.
-router.post('/signup', async (req, res) => {
+router.post('/signup', asyncHandler(async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const { email, password } = parsed.data;
@@ -62,7 +63,7 @@ router.post('/signup', async (req, res) => {
   } finally {
     client.release();
   }
-});
+}));
 
 const redeemSchema = z.object({
   email: z.string().email(),
@@ -71,7 +72,7 @@ const redeemSchema = z.object({
 });
 
 // Joins an existing household as the spouse account, using the primary's invite code.
-router.post('/invite/redeem', async (req, res) => {
+router.post('/invite/redeem', asyncHandler(async (req, res) => {
   const parsed = redeemSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const { email, password, inviteCode } = parsed.data;
@@ -103,14 +104,14 @@ router.post('/invite/redeem', async (req, res) => {
   );
   const token = issueToken(user.rows[0]);
   res.status(201).json({ token, role: 'spouse' });
-});
+}));
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', asyncHandler(async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const { email, password } = parsed.data;
@@ -129,6 +130,6 @@ router.post('/login', async (req, res) => {
   }
   const token = issueToken(user);
   res.json({ token, role: user.role });
-});
+}));
 
 export default router;

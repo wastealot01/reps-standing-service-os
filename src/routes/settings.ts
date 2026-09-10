@@ -2,13 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../db/pool';
 import { AuthedRequest, requireAuth } from '../middleware/auth';
+import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 router.use(requireAuth);
 
 const updateSchema = z.object({ annualBaseHours: z.number().int().positive().max(8760) });
 
-router.patch('/', async (req: AuthedRequest, res) => {
+router.patch('/', asyncHandler(async (req: AuthedRequest, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -17,6 +18,6 @@ router.patch('/', async (req: AuthedRequest, res) => {
     req.user!.id,
   ]);
   res.json({ annualBaseHours: parsed.data.annualBaseHours });
-});
+}));
 
 export default router;
