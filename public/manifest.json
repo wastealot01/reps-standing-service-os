@@ -1,0 +1,10 @@
+{
+  "name": "REPS Standing",
+  "short_name": "REPS Standing",
+  "description": "Track hours toward Real Estate Professional Status",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E171F",
+  "theme_color": "#0E171F",
+  "icons": []
+}
