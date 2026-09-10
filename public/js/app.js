@@ -31,10 +31,10 @@ function render() {
 
 function authHelperText() {
   if (state.authMode === 'signup') {
-    return "Setting this up for the first time? Start here, you'll get an invite code afterward to share with your spouse.";
+    return "First time setting this up? Start here — you'll get an invite code afterward to share with your spouse.";
   }
   if (state.authMode === 'redeem') {
-    return 'Your spouse already set this up? Enter the invite code they gave you.';
+    return 'Your spouse already created the household? Enter the invite code they gave you.';
   }
   return '';
 }
@@ -42,14 +42,22 @@ function authHelperText() {
 function renderAuth() {
   root.innerHTML = `
     <div class="auth-card">
-      <div class="brand"><div class="mark">${markSvg()}</div>REPS Standing</div>
-      <div class="tagline">Track your hours toward Real Estate Professional Status</div>
+      <div class="auth-header">
+        <div class="mark mark-lg">${markSvg()}</div>
+        <div class="brand-name">REPS Standing</div>
+      </div>
+
+      <div class="intro-panel">
+        <p>REPS Standing helps you track hours toward Real Estate Professional Status (IRC §469). Log qualifying activity in seconds, and export a CPA-ready report each year.</p>
+      </div>
+
       <div class="tabs">
         <div class="tabbtn ${state.authMode === 'login' ? 'active' : ''}" data-mode="login">Log In</div>
         <div class="tabbtn ${state.authMode === 'signup' ? 'active' : ''}" data-mode="signup">New Household</div>
         <div class="tabbtn ${state.authMode === 'redeem' ? 'active' : ''}" data-mode="redeem">Join as Spouse</div>
       </div>
       ${authHelperText() ? `<p class="tab-hint">${authHelperText()}</p>` : ''}
+
       <form id="authForm">
         <input class="input" type="email" name="email" placeholder="Email" required />
         <input class="input" type="password" name="password" placeholder="Password (at least 8 characters)" minlength="8" required />
@@ -57,7 +65,10 @@ function renderAuth() {
         <button class="cta" type="submit">${authSubmitLabel()}</button>
       </form>
       ${state.error ? `<div class="error">${state.error}</div>` : ''}
-      ${state.authMode === 'signup' ? '<p class="hint">Creates a new household. You will get an invite code to share with your spouse.</p>' : ''}
+
+      <div class="disclaimer">
+        REPS Standing is an hour-tracking tool only. It does not provide tax, legal, or financial advice, and does not determine or guarantee your eligibility for Real Estate Professional Status. XSITE Capital Investment makes no representation as to the accuracy of self-reported entries and is not responsible for any tax position taken based on data recorded here. Consult a qualified CPA or tax attorney before relying on this information for tax filing purposes.
+      </div>
     </div>
   `;
 
@@ -98,7 +109,7 @@ function authSubmitLabel() {
 }
 
 function markSvg() {
-  return `<svg viewBox="0 0 24 24" width="13" height="13" fill="none"><path d="M4 16l6-8 4 5 6-9" stroke="#D8AA6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return `<svg viewBox="0 0 24 24" width="60%" height="60%" fill="none"><path d="M4 16l6-8 4 5 6-9" stroke="#D8AA6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 async function loadProperties() {
