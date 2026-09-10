@@ -113,7 +113,13 @@ body{
       "topbar topbar"
       "tabbar content";
   }
-  .auth-card{ max-width:460px; padding:40px 36px 30px; }
+  .auth-card{ max-width:640px; padding:52px 56px 40px; }
+  .auth-card .brand-name{ font-size:24px; }
+  .auth-card .mark-lg{ width:52px; height:52px; }
+  .auth-card .intro-panel{ padding:20px 24px; }
+  .auth-card .intro-panel p{ font-size:13px; }
+  .auth-card .input{ padding:15px 16px; font-size:14px; }
+  .auth-card .cta{ padding:16px; font-size:14px; }
 
   .topbar{ grid-area:topbar; padding:20px 28px; }
   .brand-sm{ font-size:14px; }
