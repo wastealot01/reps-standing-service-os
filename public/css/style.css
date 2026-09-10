@@ -63,7 +63,10 @@ body{
 .textarea{ width:100%; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; color:var(--w90); font-size:12.5px; margin-bottom:14px; resize:none; font-family:'Inter'; }
 .cta{ width:100%; background:var(--gold); color:var(--bg); font-size:13px; font-weight:600; letter-spacing:0.03em; padding:14px; border-radius:100px; text-align:center; border:none; cursor:pointer; }
 .cta:disabled{ opacity:0.5; cursor:default; }
-.savemsg{ text-align:center; font-size:11px; color:var(--gold-light); margin-top:10px; min-height:14px; }
+.savemsg{ text-align:center; font-size:12px; font-weight:600; margin-top:0; min-height:0; border-radius:12px; padding:0; max-height:0; overflow:hidden; transition:all 0.2s ease; }
+.savemsg.show{ margin-top:12px; padding:12px; max-height:60px; }
+.savemsg.show.success{ background:rgba(120,190,130,0.15); border:1px solid rgba(120,190,130,0.4); color:#8fd39b; }
+.savemsg.show.error{ background:rgba(224,138,138,0.12); border:1px solid rgba(224,138,138,0.35); color:#e08a8a; }
 .progress-panel{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:20px; margin-bottom:22px; }
 .panel-divider{ height:1px; background:var(--border); margin:18px 0; }
 .ring-row{ display:flex; gap:12px; margin-bottom:0; }

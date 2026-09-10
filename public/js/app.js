@@ -27,6 +27,8 @@ let state = {
   outlookConnected: null,
   outlookEvents: [],
   showOutlookEvents: false,
+  saveStatus: '',
+  saveMsgText: '',
 };
 
 function render() {
@@ -249,7 +251,7 @@ function renderLogScreen() {
     <textarea class="textarea" id="evidenceInput" rows="2" placeholder="e.g. calendar invite title, email subject">${escapeHtml(state.evidence)}</textarea>
 
     <button class="cta" id="saveBtn" ${!state.selectedProperty ? 'disabled' : ''}>${state.selectedProperty ? 'Save Entry' : 'Add a property to log hours'}</button>
-    <div class="savemsg" id="saveMsg"></div>
+    <div class="savemsg ${state.saveStatus ? 'show ' + state.saveStatus : ''}" id="saveMsg">${state.saveMsgText || ''}</div>
     </div>
     </div>
   `;
@@ -330,15 +332,19 @@ function renderLogScreen() {
         state.selectedCategories = [CATEGORIES[0].id];
         state.note = '';
         state.evidence = '';
+        state.saveStatus = 'success';
+        state.saveMsgText = '✓ Entry saved';
         renderLogScreen();
-        const m = document.getElementById('saveMsg');
-        if (m) {
-          m.textContent = 'Entry saved';
-          setTimeout(() => { const m2 = document.getElementById('saveMsg'); if (m2) m2.textContent = ''; }, 2200);
-        }
+        setTimeout(() => {
+          state.saveStatus = '';
+          state.saveMsgText = '';
+          const m = document.getElementById('saveMsg');
+          if (m) { m.className = 'savemsg'; m.textContent = ''; }
+        }, 2600);
       } catch (err) {
-        const m = document.getElementById('saveMsg');
-        if (m) m.textContent = err.message;
+        state.saveStatus = 'error';
+        state.saveMsgText = err.message;
+        renderLogScreen();
       }
     };
   }
