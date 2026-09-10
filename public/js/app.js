@@ -32,6 +32,7 @@ let state = {
   saveMsgText: '',
   showWalkthrough: false,
   walkthroughStep: 0,
+  showOutlookInfo: false,
 };
 
 function render() {
@@ -198,6 +199,28 @@ function bindWalkthroughEvents() {
   };
 }
 
+function renderOutlookInfoModal() {
+  return `
+    <div class="wt-overlay" id="outlookInfoOverlay">
+      <div class="wt-modal">
+        <div class="wt-title">Connect your Outlook calendar</div>
+        <div class="wt-body">
+          Clicking continue opens a real Microsoft sign-in window, this app never sees your
+          password. Once you approve it, REPS Standing can read your calendar events from the
+          last 7 days, read-only, nothing is ever created, changed, or deleted on your calendar.
+          <br><br>
+          That lets you pick a real meeting to prefill a log entry's note, instead of retyping
+          what it was about. You can disconnect this anytime.
+        </div>
+        <div class="wt-actions">
+          <div class="wt-skip" id="outlookInfoCancel">Cancel</div>
+          <div class="wt-btn" id="outlookInfoContinue">Continue to Microsoft</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderApp() {
   root.innerHTML = `
     <div class="card">
@@ -215,9 +238,15 @@ function renderApp() {
       </div>
     </div>
     ${state.showWalkthrough ? renderWalkthrough() : ''}
+    ${state.showOutlookInfo ? renderOutlookInfoModal() : ''}
   `;
   document.getElementById('logoutBtn').onclick = () => { API.clearToken(); state.screen = 'auth'; render(); };
   document.getElementById('helpBtn').onclick = () => { state.walkthroughStep = 0; state.showWalkthrough = true; renderApp(); };
+
+  const outlookCancel = document.getElementById('outlookInfoCancel');
+  if (outlookCancel) outlookCancel.onclick = () => { state.showOutlookInfo = false; renderApp(); };
+  const outlookContinue = document.getElementById('outlookInfoContinue');
+  if (outlookContinue) outlookContinue.onclick = () => { window.location.href = API.connectOutlookUrl(); };
   document.querySelectorAll('.tab').forEach(el => {
     el.onclick = async () => {
       state.screen = el.dataset.screen;
@@ -238,7 +267,7 @@ function renderOutlookSection() {
     return `
       <div class="outlook-row">
         <span class="outlook-text">Pull today's activity straight from your calendar.</span>
-        <a class="outlook-btn" href="${API.connectOutlookUrl()}">Connect Outlook</a>
+        <div class="outlook-btn" id="connectOutlookBtn">Connect Outlook</div>
       </div>
     `;
   }
@@ -353,6 +382,9 @@ function renderLogScreen() {
     state.selectedProperty = created.id;
     renderLogScreen();
   };
+
+  const connectBtn = document.getElementById('connectOutlookBtn');
+  if (connectBtn) connectBtn.onclick = () => { state.showOutlookInfo = true; renderApp(); };
 
   const importBtn = document.getElementById('importOutlookBtn');
   if (importBtn) {

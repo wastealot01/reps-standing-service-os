@@ -26,6 +26,13 @@ function requireMsConfig() {
 router.get('/connect', (req, res) => {
   try {
     requireMsConfig();
+  } catch (err) {
+    return res.status(503).send(
+      'Outlook connection is not set up yet for this app. An administrator needs to register ' +
+      'it in Azure and add the credentials before this button will work — see the README for steps.'
+    );
+  }
+  try {
     const token = req.query.token as string | undefined;
     if (!token) return res.status(401).send('Missing session token.');
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { sub: string };
