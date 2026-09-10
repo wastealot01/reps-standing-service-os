@@ -29,18 +29,30 @@ function render() {
   return renderApp();
 }
 
+function authHelperText() {
+  if (state.authMode === 'signup') {
+    return "Setting this up for the first time? Start here, you'll get an invite code afterward to share with your spouse.";
+  }
+  if (state.authMode === 'redeem') {
+    return 'Your spouse already set this up? Enter the invite code they gave you.';
+  }
+  return '';
+}
+
 function renderAuth() {
   root.innerHTML = `
     <div class="auth-card">
       <div class="brand"><div class="mark">${markSvg()}</div>REPS Standing</div>
+      <div class="tagline">Track your hours toward Real Estate Professional Status</div>
       <div class="tabs">
         <div class="tabbtn ${state.authMode === 'login' ? 'active' : ''}" data-mode="login">Log In</div>
         <div class="tabbtn ${state.authMode === 'signup' ? 'active' : ''}" data-mode="signup">New Household</div>
         <div class="tabbtn ${state.authMode === 'redeem' ? 'active' : ''}" data-mode="redeem">Join as Spouse</div>
       </div>
+      ${authHelperText() ? `<p class="tab-hint">${authHelperText()}</p>` : ''}
       <form id="authForm">
         <input class="input" type="email" name="email" placeholder="Email" required />
-        <input class="input" type="password" name="password" placeholder="Password" minlength="8" required />
+        <input class="input" type="password" name="password" placeholder="Password (at least 8 characters)" minlength="8" required />
         ${state.authMode === 'redeem' ? '<input class="input" name="inviteCode" placeholder="Invite code from your spouse" required />' : ''}
         <button class="cta" type="submit">${authSubmitLabel()}</button>
       </form>
