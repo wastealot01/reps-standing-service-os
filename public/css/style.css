@@ -100,9 +100,9 @@ body{
 
   .card{
     max-width:1040px;
-    min-height:auto;
-    height:calc(100vh - 96px);
-    max-height:760px;
+    min-height:520px;
+    max-height:calc(100vh - 96px);
+    height:auto;
     display:grid;
     grid-template-columns:200px 1fr;
     grid-template-rows:auto 1fr;

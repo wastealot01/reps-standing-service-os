@@ -48,7 +48,7 @@ function renderAuth() {
   root.innerHTML = `
     <div class="auth-card">
       <div class="auth-header">
-        <div class="mark mark-lg">${markSvg()}</div>
+        <div class="mark mark-lg">${markSvg(26)}</div>
         <div class="brand-name">REPS Standing</div>
       </div>
 
@@ -113,8 +113,9 @@ function authSubmitLabel() {
   return 'Join Household';
 }
 
-function markSvg() {
-  return `<svg viewBox="0 0 24 24" width="60%" height="60%" fill="none"><path d="M4 16l6-8 4 5 6-9" stroke="#D8AA6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function markSvg(size) {
+  const s = size || 13;
+  return `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none"><path d="M4 16l6-8 4 5 6-9" stroke="#D8AA6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 async function loadProperties() {
@@ -133,7 +134,7 @@ function renderApp() {
   root.innerHTML = `
     <div class="card">
       <div class="topbar">
-        <div class="brand-sm">${markSvg()} REPS Standing</div>
+        <div class="brand-sm">${markSvg(13)} REPS Standing</div>
         <div class="profile-btn" id="logoutBtn">Log out</div>
       </div>
       <div class="content" id="content"></div>
