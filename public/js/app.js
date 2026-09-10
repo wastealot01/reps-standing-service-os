@@ -18,6 +18,7 @@ let state = {
   hours: 1,
   note: '',
   evidence: '',
+  entryDate: new Date().toISOString().slice(0, 10),
   properties: [],
   selectedProperty: null,
   entries: [],
@@ -307,7 +308,10 @@ function renderLogScreen() {
     </div>
 
     <div class="log-col-right">
-    <span class="label">Hours spent</span>
+    <span class="label">Date</span>
+    <input class="input" type="date" id="entryDateInput" value="${state.entryDate}" max="${new Date().toISOString().slice(0, 10)}" />
+
+    <span class="label" style="margin-top:14px; display:block;">Hours spent</span>
     <div class="stepper">
       <span style="font-size:12px; color:var(--w70);">Time on this activity</span>
       <div style="display:flex; align-items:center; gap:14px;">
@@ -371,6 +375,9 @@ function renderLogScreen() {
       if (!event) return;
       state.note = event.subject || '';
       state.evidence = `Outlook calendar event: "${event.subject}"`;
+      const eventDate = new Date(event.start).toISOString().slice(0, 10);
+      const today = new Date().toISOString().slice(0, 10);
+      state.entryDate = eventDate <= today ? eventDate : today;
       state.showOutlookEvents = false;
       renderLogScreen();
     };
@@ -388,6 +395,7 @@ function renderLogScreen() {
   document.getElementById('stepUp').onclick = () => { state.hours = +(state.hours + 0.5).toFixed(1); document.getElementById('stepVal').textContent = state.hours; };
   document.getElementById('noteInput').oninput = (e) => { state.note = e.target.value; };
   document.getElementById('evidenceInput').oninput = (e) => { state.evidence = e.target.value; };
+  document.getElementById('entryDateInput').onchange = (e) => { state.entryDate = e.target.value; };
 
   const saveBtn = document.getElementById('saveBtn');
   if (state.selectedProperty) {
@@ -399,11 +407,13 @@ function renderLogScreen() {
           hours: state.hours,
           note: state.note,
           evidenceReference: state.evidence,
+          entryDate: state.entryDate,
         });
         state.hours = 1;
         state.selectedCategories = [CATEGORIES[0].id];
         state.note = '';
         state.evidence = '';
+        state.entryDate = new Date().toISOString().slice(0, 10);
         state.saveStatus = 'success';
         state.saveMsgText = '✓ Entry saved';
         renderLogScreen();

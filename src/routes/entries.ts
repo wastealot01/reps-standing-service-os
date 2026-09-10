@@ -14,7 +14,10 @@ const createSchema = z.object({
   hours: z.number().positive().max(24),
   note: z.string().max(2000).optional(),
   evidenceReference: z.string().max(2000).optional(),
-  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(
+    (d) => d <= new Date().toISOString().slice(0, 10),
+    { message: 'Entry date cannot be in the future' }
+  ).optional(),
 });
 
 // Every entry is scoped to req.user.id, never the household — hours must never
