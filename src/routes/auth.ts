@@ -8,10 +8,11 @@ import { pool } from '../db/pool';
 const router = Router();
 
 function issueToken(user: { id: string; household_id: string; role: string }) {
+  const expiresIn = (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'];
   return jwt.sign(
     { sub: user.id, householdId: user.household_id, role: user.role },
     process.env.JWT_SECRET as string,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn }
   );
 }
 
