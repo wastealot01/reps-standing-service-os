@@ -9,7 +9,7 @@ const API = (() => {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const res = await fetch(`/api${path}`, { ...options, headers });
-    if (res.status === 401) {
+    if (res.status === 401 && token) {
       clearToken();
       window.location.reload();
       throw new Error('Session expired');
