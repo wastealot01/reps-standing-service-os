@@ -38,7 +38,6 @@ router.get('/csv', asyncHandler(async (req: AuthedRequest, res) => {
 
   let csv = '';
   csv += headerLine('REPS Standing — Real Estate Professional Status Hour Log');
-  csv += headerLine('An XSITE Capital Investment property');
   csv += headerLine(`Prepared for: ${user.email} (${roleLabel})`);
   csv += headerLine(`Tax year: ${year}`);
   csv += headerLine(`Generated: ${generatedAt}`);

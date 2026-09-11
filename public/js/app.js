@@ -80,7 +80,7 @@ function renderAuth() {
       ${state.error ? `<div class="error">${state.error}</div>` : ''}
 
       <div class="disclaimer">
-        REPS Standing is an hour-tracking tool only. It does not provide tax, legal, or financial advice, and does not determine or guarantee your eligibility for Real Estate Professional Status. XSITE Capital Investment makes no representation as to the accuracy of self-reported entries and is not responsible for any tax position taken based on data recorded here. Consult a qualified CPA or tax attorney before relying on this information for tax filing purposes.
+        REPS Standing is an hour-tracking tool only. It does not provide tax, legal, or financial advice, and does not determine or guarantee your eligibility for Real Estate Professional Status. This tool makes no representation as to the accuracy of self-reported entries and is not responsible for any tax position taken based on data recorded here. Consult a qualified CPA or tax attorney before relying on this information for tax filing purposes.
       </div>
     </div>
   `;
