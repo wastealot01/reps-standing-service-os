@@ -72,7 +72,7 @@ function renderAuth() {
       ${authHelperText() ? `<p class="tab-hint">${authHelperText()}</p>` : ''}
 
       <form id="authForm">
-        <input class="input" type="email" name="email" placeholder="Email" required />
+        <input class="input" type="email" name="email" placeholder="Email" autocapitalize="none" autocorrect="off" spellcheck="false" required />
         <input class="input" type="password" name="password" placeholder="Password (at least 8 characters)" minlength="8" required />
         ${state.authMode === 'redeem' ? '<input class="input" name="inviteCode" placeholder="Invite code from your spouse" required />' : ''}
         <button class="cta" type="submit">${authSubmitLabel()}</button>

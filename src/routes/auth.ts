@@ -31,9 +31,10 @@ const signupSchema = z.object({
 router.post('/signup', asyncHandler(async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { email, password } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password } = parsed.data;
 
-  const existing = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+  const existing = await pool.query('SELECT 1 FROM users WHERE LOWER(email) = $1', [email]);
   if (existing.rows.length > 0) {
     return res.status(409).json({ error: 'An account with that email already exists' });
   }
@@ -75,7 +76,8 @@ const redeemSchema = z.object({
 router.post('/invite/redeem', asyncHandler(async (req, res) => {
   const parsed = redeemSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { email, password, inviteCode } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password, inviteCode } = parsed.data;
 
   const household = await pool.query('SELECT id FROM households WHERE invite_code = $1', [inviteCode.toUpperCase()]);
   if (household.rows.length === 0) {
@@ -91,7 +93,7 @@ router.post('/invite/redeem', asyncHandler(async (req, res) => {
     return res.status(409).json({ error: 'This household already has a spouse account' });
   }
 
-  const existingEmail = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+  const existingEmail = await pool.query('SELECT 1 FROM users WHERE LOWER(email) = $1', [email]);
   if (existingEmail.rows.length > 0) {
     return res.status(409).json({ error: 'An account with that email already exists' });
   }
@@ -114,10 +116,11 @@ const loginSchema = z.object({
 router.post('/login', asyncHandler(async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  const { email, password } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password } = parsed.data;
 
   const result = await pool.query(
-    'SELECT id, household_id, role, password_hash FROM users WHERE email = $1',
+    'SELECT id, household_id, role, password_hash FROM users WHERE LOWER(email) = $1',
     [email]
   );
   if (result.rows.length === 0) {
