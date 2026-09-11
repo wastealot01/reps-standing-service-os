@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root{
   --bg:#0E171F; --panel:#1B2731; --cream:#EEE7D7; --sage:#91937C;
@@ -102,12 +102,12 @@ body{
   body{ align-items:center; padding:48px 32px; }
 
   .card{
-    max-width:1040px;
-    min-height:520px;
+    max-width:1280px;
+    min-height:560px;
     max-height:calc(100vh - 96px);
     height:auto;
     display:grid;
-    grid-template-columns:200px 1fr;
+    grid-template-columns:230px 1fr;
     grid-template-rows:auto 1fr;
     grid-template-areas:
       "topbar topbar"
@@ -121,8 +121,8 @@ body{
   .auth-card .input{ padding:15px 16px; font-size:14px; }
   .auth-card .cta{ padding:16px; font-size:14px; }
 
-  .topbar{ grid-area:topbar; padding:20px 28px; }
-  .brand-sm{ font-size:14px; }
+  .topbar{ grid-area:topbar; padding:22px 32px; }
+  .brand-sm{ font-size:15px; }
 
   .tabbar{
     grid-area:tabbar;
@@ -131,20 +131,28 @@ body{
     border-right:1px solid var(--border);
     justify-content:flex-start;
     align-items:stretch;
-    padding:20px 14px;
+    padding:24px 16px;
     gap:6px;
     background:transparent;
   }
   .tab{
     flex:none;
     text-align:left;
-    padding:11px 16px;
+    padding:12px 18px;
     border-radius:10px;
-    font-size:11px;
+    font-size:12px;
   }
   .tab.active{ background:rgba(216,170,110,0.12); }
 
-  .content{ padding:32px 40px; overflow-y:auto; }
+  .content{ padding:36px 44px; }
+  .title{ font-size:30px; font-style:italic; }
+  .sub{ font-size:13.5px; }
+  .label{ font-size:11px; }
+  .check .name{ font-size:13.5px; }
+  .check .meta{ font-size:11px; }
+  .welcome h3{ font-size:20px; font-style:italic; }
+  .welcome p{ font-size:13px; }
+  .intro-panel p{ font-size:13px; }
 
   .log-grid, .dash-grid{
     display:grid;
