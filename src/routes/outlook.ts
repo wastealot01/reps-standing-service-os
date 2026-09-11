@@ -164,12 +164,12 @@ router.get('/events', requireAuth, async (req: AuthedRequest, res) => {
     if (!accessToken) return res.status(400).json({ error: 'Outlook is not connected' });
 
     const now = new Date();
-    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const start = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const params = new URLSearchParams({
       startDateTime: start.toISOString(),
       endDateTime: now.toISOString(),
       $orderby: 'start/dateTime desc',
-      $top: '25',
+      $top: '50',
     });
     const graphRes = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?${params.toString()}`, {
       headers: { Authorization: `Bearer ${accessToken}` },

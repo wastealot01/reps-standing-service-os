@@ -11,7 +11,7 @@ interface GraphEvent {
 
 async function fetchRecentEvents(accessToken: string): Promise<GraphEvent[]> {
   const now = new Date();
-  const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const start = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
   const params = new URLSearchParams({
     startDateTime: start.toISOString(),
     endDateTime: now.toISOString(),
