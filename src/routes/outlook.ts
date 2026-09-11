@@ -7,13 +7,19 @@ import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 
-export const MS_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
-const MS_AUTHORIZE_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
+export function getMsTokenUrl(): string {
+  const tenant = process.env.MS_TENANT_ID || 'common';
+  return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`;
+}
+function getMsAuthorizeUrl(): string {
+  const tenant = process.env.MS_TENANT_ID || 'common';
+  return `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`;
+}
 export const MS_SCOPES = 'offline_access Calendars.Read';
 
 export function requireMsConfig() {
-  if (!process.env.MS_CLIENT_ID || !process.env.MS_CLIENT_SECRET || !process.env.MS_REDIRECT_URI) {
-    throw new Error('Microsoft OAuth is not configured (MS_CLIENT_ID / MS_CLIENT_SECRET / MS_REDIRECT_URI)');
+  if (!process.env.MS_CLIENT_ID || !process.env.MS_CLIENT_SECRET || !process.env.MS_REDIRECT_URI || !process.env.MS_TENANT_ID) {
+    throw new Error('Microsoft OAuth is not configured (MS_CLIENT_ID / MS_CLIENT_SECRET / MS_REDIRECT_URI / MS_TENANT_ID)');
   }
 }
 
@@ -46,7 +52,7 @@ router.get('/connect', (req, res) => {
       scope: MS_SCOPES,
       state,
     });
-    res.redirect(`${MS_AUTHORIZE_URL}?${params.toString()}`);
+    res.redirect(`${getMsAuthorizeUrl()}?${params.toString()}`);
   } catch (err) {
     res.status(401).send('Your session has expired — please log in again and retry connecting Outlook.');
   }
@@ -70,7 +76,7 @@ router.get('/callback', async (req, res) => {
 
     const payload = jwt.verify(state, process.env.JWT_SECRET as string) as { sub: string };
 
-    const tokenRes = await fetch(MS_TOKEN_URL, {
+    const tokenRes = await fetch(getMsTokenUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -125,7 +131,7 @@ export async function getAccessToken(userId: string): Promise<string | null> {
   if (!encrypted) return null;
 
   const refreshToken = decrypt(encrypted);
-  const tokenRes = await fetch(MS_TOKEN_URL, {
+  const tokenRes = await fetch(getMsTokenUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({

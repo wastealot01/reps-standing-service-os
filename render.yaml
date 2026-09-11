@@ -24,6 +24,8 @@ services:
         sync: false
       - key: MS_REDIRECT_URI
         sync: false
+      - key: MS_TENANT_ID
+        sync: false
       - key: NODE_ENV
         value: production
 
