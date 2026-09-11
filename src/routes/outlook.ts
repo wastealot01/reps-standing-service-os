@@ -57,7 +57,15 @@ router.get('/connect', (req, res) => {
 router.get('/callback', async (req, res) => {
   try {
     requireMsConfig();
-    const { code, state } = req.query as { code?: string; state?: string };
+    const { code, state, error, error_description } = req.query as {
+      code?: string; state?: string; error?: string; error_description?: string;
+    };
+    if (error) {
+      console.error('Microsoft returned an OAuth error', error, error_description);
+      return res.status(400).send(
+        `Microsoft declined the connection: ${error}${error_description ? ' — ' + error_description : ''}`
+      );
+    }
     if (!code || !state) return res.status(400).send('Missing code or state from Microsoft.');
 
     const payload = jwt.verify(state, process.env.JWT_SECRET as string) as { sub: string };
