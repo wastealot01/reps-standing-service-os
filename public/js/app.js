@@ -107,6 +107,7 @@ function renderAuth() {
       state.screen = 'log';
       state.error = '';
       await loadProperties();
+      await loadOutlookState();
       let seenWalkthrough = false;
       try { seenWalkthrough = !!localStorage.getItem('reps-walkthrough-seen'); } catch (e) {}
       if (!seenWalkthrough) { state.showWalkthrough = true; state.walkthroughStep = 0; }
@@ -116,6 +117,18 @@ function renderAuth() {
       render();
     }
   };
+}
+
+async function loadOutlookState() {
+  try {
+    const status = await API.getOutlookStatus();
+    state.outlookConnected = status.connected;
+    if (state.outlookConnected) {
+      state.outlookSuggestions = await API.getOutlookSuggestions();
+    }
+  } catch (err) {
+    state.outlookConnected = false;
+  }
 }
 
 function authSubmitLabel() {
@@ -634,15 +647,7 @@ function escapeHtml(str) {
     } catch (err) {
       state.screen = 'auth';
     }
-    try {
-      const status = await API.getOutlookStatus();
-      state.outlookConnected = status.connected;
-      if (state.outlookConnected) {
-        state.outlookSuggestions = await API.getOutlookSuggestions();
-      }
-    } catch (err) {
-      state.outlookConnected = false;
-    }
+    await loadOutlookState();
   }
   render();
 })();
