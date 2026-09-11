@@ -26,6 +26,7 @@ let state = {
   addingProperty: false,
   error: '',
   outlookConnected: null,
+  outlookConnections: [],
   outlookEvents: [],
   showOutlookEvents: false,
   outlookSuggestions: [],
@@ -123,11 +124,13 @@ async function loadOutlookState() {
   try {
     const status = await API.getOutlookStatus();
     state.outlookConnected = status.connected;
+    state.outlookConnections = status.connections || [];
     if (state.outlookConnected) {
       state.outlookSuggestions = await API.getOutlookSuggestions();
     }
   } catch (err) {
     state.outlookConnected = false;
+    state.outlookConnections = [];
   }
 }
 
@@ -289,6 +292,7 @@ function renderSuggestionsSection() {
               ${s.suggested_category_ids && s.suggested_category_ids.length > 0
                 ? ' · ' + s.suggested_category_ids.map(id => { const c = findLocalCategory(id); return c ? c.name : id; }).join(', ')
                 : ' · no category match, pick manually'}
+              ${state.outlookConnections.length > 1 && s.account ? ' · ' + escapeHtml(s.account) : ''}
             </div>
           </div>
           <div class="suggest-actions">
@@ -316,8 +320,16 @@ function renderOutlookSection() {
     `;
   }
   return `
+    <div class="outlook-accounts">
+      ${state.outlookConnections.map(c => `
+        <div class="outlook-account-row">
+          <span class="outlook-account-email">${escapeHtml(c.email || 'Connected account')}</span>
+          <span class="outlook-account-x" data-disconnect-id="${c.id}">Disconnect</span>
+        </div>
+      `).join('')}
+    </div>
     <div class="outlook-row">
-      <span class="outlook-text">Outlook connected.</span>
+      <div class="outlook-btn" id="connectOutlookBtn">+ Connect another account</div>
       <div class="outlook-btn" id="importOutlookBtn">${state.showOutlookEvents ? 'Hide events' : 'Import from Outlook'}</div>
     </div>
     ${state.showOutlookEvents ? `
@@ -326,7 +338,7 @@ function renderOutlookSection() {
         ${state.outlookEvents.map((e, i) => `
           <div class="outlook-event" data-idx="${i}">
             <div class="t">${escapeHtml(e.subject || '(no subject)')}</div>
-            <div class="d">${new Date(e.start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+            <div class="d">${new Date(e.start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}${state.outlookConnections.length > 1 && e.account ? ' · ' + escapeHtml(e.account) : ''}</div>
           </div>
         `).join('')}
       </div>
@@ -430,6 +442,16 @@ function renderLogScreen() {
 
   const connectBtn = document.getElementById('connectOutlookBtn');
   if (connectBtn) connectBtn.onclick = () => { state.showOutlookInfo = true; renderApp(); };
+  document.querySelectorAll('.outlook-account-x').forEach(el => {
+    el.onclick = async () => {
+      const id = el.dataset.disconnectId;
+      try {
+        await API.disconnectOutlook(id);
+        await loadOutlookState();
+        renderLogScreen();
+      } catch (err) {}
+    };
+  });
 
   const importBtn = document.getElementById('importOutlookBtn');
   if (importBtn) {

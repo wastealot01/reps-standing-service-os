@@ -29,8 +29,9 @@ async function fetchRecentEvents(accessToken: string): Promise<GraphEvent[]> {
   return data.value;
 }
 
-async function syncUserCalendar(userId: string): Promise<number> {
-  const accessToken = await getAccessToken(userId);
+// Syncs one connected Microsoft account (one row in ms_connections).
+async function syncOneConnection(connectionId: string, userId: string): Promise<number> {
+  const accessToken = await getAccessToken(connectionId);
   if (!accessToken) return 0;
 
   const events = await fetchRecentEvents(accessToken);
@@ -40,11 +41,11 @@ async function syncUserCalendar(userId: string): Promise<number> {
     if (!event.subject) continue;
     const suggestedIds = suggestCategoriesForText(event.subject);
     const result = await pool.query(
-      `INSERT INTO outlook_suggestions (user_id, ms_event_id, subject, event_start, event_end, suggested_category_ids)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (user_id, ms_event_id) DO NOTHING
+      `INSERT INTO outlook_suggestions (user_id, ms_connection_id, ms_event_id, subject, event_start, event_end, suggested_category_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (ms_connection_id, ms_event_id) DO NOTHING
        RETURNING id`,
-      [userId, event.id, event.subject, event.start.dateTime, event.end.dateTime, JSON.stringify(suggestedIds)]
+      [userId, connectionId, event.id, event.subject, event.start.dateTime, event.end.dateTime, JSON.stringify(suggestedIds)]
     );
     if (result.rows.length > 0) created += 1;
   }
@@ -58,17 +59,17 @@ export async function syncAllConnectedUsers(): Promise<void> {
     // optional until the app registration step is done.
     if (!process.env.MS_CLIENT_ID || !process.env.MS_CLIENT_SECRET) return;
 
-    const users = await pool.query(
-      'SELECT id FROM users WHERE ms_refresh_token_encrypted IS NOT NULL'
-    );
-    for (const user of users.rows) {
+    const connections = await pool.query('SELECT id, user_id, ms_email FROM ms_connections');
+    for (const conn of connections.rows) {
       try {
-        const created = await syncUserCalendar(user.id);
-        if (created > 0) console.log(`Outlook sync: ${created} new suggestion(s) for user ${user.id}`);
+        const created = await syncOneConnection(conn.id, conn.user_id);
+        if (created > 0) {
+          console.log(`Outlook sync: ${created} new suggestion(s) for ${conn.ms_email || conn.id}`);
+        }
       } catch (err) {
-        // One user's sync failing (expired grant, revoked access, etc.)
-        // should never block the rest of the household or other users.
-        console.error(`Outlook sync failed for user ${user.id}`, err);
+        // One connection failing (expired grant, revoked access, etc.)
+        // should never block the rest.
+        console.error(`Outlook sync failed for connection ${conn.id}`, err);
       }
     }
   } catch (err) {

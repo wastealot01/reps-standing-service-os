@@ -208,3 +208,10 @@ input[type="date"]{ color-scheme: dark; }
 .suggest-use{ font-size:11px; font-weight:600; color:var(--gold-light); background:rgba(216,170,110,0.14); border:1px solid rgba(216,170,110,0.4); border-radius:100px; padding:6px 12px; cursor:pointer; white-space:nowrap; }
 .suggest-dismiss{ font-size:14px; color:var(--w30); cursor:pointer; padding:0 4px; }
 .suggest-dismiss:hover{ color:var(--w70); }
+
+.outlook-accounts{ margin-bottom:10px; }
+.outlook-account-row{ display:flex; align-items:center; justify-content:space-between; padding:8px 2px; border-bottom:1px solid var(--border); }
+.outlook-account-row:last-child{ border-bottom:none; }
+.outlook-account-email{ font-size:12px; color:var(--w90); }
+.outlook-account-x{ font-size:10.5px; font-weight:600; color:var(--w50); cursor:pointer; }
+.outlook-account-x:hover{ color:#e08a8a; }

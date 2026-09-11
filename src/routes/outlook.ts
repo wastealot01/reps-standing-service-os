@@ -29,6 +29,8 @@ export function requireMsConfig() {
 // cannot carry our usual Authorization header. The frontend instead passes the
 // user's existing JWT as a one-time query parameter here, which we verify
 // manually before folding the user's id into the OAuth "state" value.
+// Each call here starts a brand new connection — there's no slot to overwrite,
+// so this is how a second, third, etc. account gets added.
 router.get('/connect', (req, res) => {
   try {
     requireMsConfig();
@@ -51,6 +53,10 @@ router.get('/connect', (req, res) => {
       response_mode: 'query',
       scope: MS_SCOPES,
       state,
+      // Forces Microsoft's account picker every time, rather than silently
+      // reusing whichever account is already signed in — otherwise there'd
+      // be no way to actually pick a *different* account to connect.
+      prompt: 'select_account',
     });
     res.redirect(`${getMsAuthorizeUrl()}?${params.toString()}`);
   } catch (err) {
@@ -58,8 +64,9 @@ router.get('/connect', (req, res) => {
   }
 });
 
-// Step 2: Microsoft redirects back here with a code. Exchange it for tokens
-// and store the refresh token encrypted, tied to the user from "state".
+// Step 2: Microsoft redirects back here with a code. Exchange it for tokens,
+// look up which Microsoft account this actually is (so we can label it in
+// the UI), and store it as a new connection row.
 router.get('/callback', async (req, res) => {
   try {
     requireMsConfig();
@@ -93,15 +100,43 @@ router.get('/callback', async (req, res) => {
       console.error('Microsoft token exchange failed', body);
       return res.status(502).send('Could not connect to Outlook. Please try again.');
     }
-    const tokens = await tokenRes.json() as { refresh_token?: string };
-    if (!tokens.refresh_token) {
-      return res.status(502).send('Microsoft did not return a refresh token.');
+    const tokens = await tokenRes.json() as { access_token?: string; refresh_token?: string };
+    if (!tokens.refresh_token || !tokens.access_token) {
+      return res.status(502).send('Microsoft did not return the expected tokens.');
     }
 
-    await pool.query(
-      'UPDATE users SET ms_refresh_token_encrypted = $1, ms_connected_at = now() WHERE id = $2',
-      [encrypt(tokens.refresh_token), payload.sub]
-    );
+    // Look up which account this actually is, so the UI can show
+    // "personal@outlook.com" rather than an anonymous "Connected".
+    let msEmail: string | null = null;
+    try {
+      const meRes = await fetch('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      if (meRes.ok) {
+        const me = await meRes.json() as { mail?: string; userPrincipalName?: string };
+        msEmail = me.mail || me.userPrincipalName || null;
+      }
+    } catch (err) {
+      console.error('Could not fetch account email from Graph', err);
+    }
+
+    // If this exact account is already connected for this user, update its
+    // token rather than creating a duplicate row.
+    const existing = msEmail
+      ? await pool.query('SELECT id FROM ms_connections WHERE user_id = $1 AND ms_email = $2', [payload.sub, msEmail])
+      : { rows: [] as { id: string }[] };
+
+    if (existing.rows.length > 0) {
+      await pool.query(
+        'UPDATE ms_connections SET refresh_token_encrypted = $1, connected_at = now() WHERE id = $2',
+        [encrypt(tokens.refresh_token), existing.rows[0].id]
+      );
+    } else {
+      await pool.query(
+        'INSERT INTO ms_connections (user_id, ms_email, refresh_token_encrypted) VALUES ($1, $2, $3)',
+        [payload.sub, msEmail, encrypt(tokens.refresh_token)]
+      );
+    }
 
     res.redirect('/?outlook=connected');
   } catch (err) {
@@ -110,24 +145,31 @@ router.get('/callback', async (req, res) => {
   }
 });
 
+// Lists every connected account for this user.
 router.get('/status', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
-  const result = await pool.query('SELECT ms_connected_at FROM users WHERE id = $1', [req.user!.id]);
-  const connectedAt = result.rows[0]?.ms_connected_at || null;
-  res.json({ connected: !!connectedAt, connectedAt });
+  const result = await pool.query(
+    'SELECT id, ms_email, connected_at FROM ms_connections WHERE user_id = $1 ORDER BY connected_at ASC',
+    [req.user!.id]
+  );
+  res.json({
+    connected: result.rows.length > 0,
+    connections: result.rows.map(r => ({ id: r.id, email: r.ms_email, connectedAt: r.connected_at })),
+  });
 }));
 
-router.post('/disconnect', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
+// Disconnects one specific account, not all of them.
+router.post('/disconnect/:connectionId', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
   await pool.query(
-    'UPDATE users SET ms_refresh_token_encrypted = NULL, ms_connected_at = NULL WHERE id = $1',
-    [req.user!.id]
+    'DELETE FROM ms_connections WHERE id = $1 AND user_id = $2',
+    [req.params.connectionId, req.user!.id]
   );
   res.status(204).send();
 }));
 
-// Refreshes an access token from the stored encrypted refresh token.
-export async function getAccessToken(userId: string): Promise<string | null> {
-  const result = await pool.query('SELECT ms_refresh_token_encrypted FROM users WHERE id = $1', [userId]);
-  const encrypted = result.rows[0]?.ms_refresh_token_encrypted;
+// Refreshes an access token from one connection's stored encrypted refresh token.
+export async function getAccessToken(connectionId: string): Promise<string | null> {
+  const result = await pool.query('SELECT refresh_token_encrypted FROM ms_connections WHERE id = $1', [connectionId]);
+  const encrypted = result.rows[0]?.refresh_token_encrypted;
   if (!encrypted) return null;
 
   const refreshToken = decrypt(encrypted);
@@ -147,58 +189,68 @@ export async function getAccessToken(userId: string): Promise<string | null> {
 
   // Microsoft rotates refresh tokens on use — persist the new one.
   if (tokens.refresh_token) {
-    await pool.query('UPDATE users SET ms_refresh_token_encrypted = $1 WHERE id = $2', [
+    await pool.query('UPDATE ms_connections SET refresh_token_encrypted = $1 WHERE id = $2', [
       encrypt(tokens.refresh_token),
-      userId,
+      connectionId,
     ]);
   }
   return tokens.access_token;
 }
 
-// Lists recent calendar events so the user can pick one to prefill a log entry,
-// rather than retyping what a meeting was about.
-router.get('/events', requireAuth, async (req: AuthedRequest, res) => {
-  try {
-    requireMsConfig();
-    const accessToken = await getAccessToken(req.user!.id);
-    if (!accessToken) return res.status(400).json({ error: 'Outlook is not connected' });
+async function fetchEventsForConnection(connectionId: string, days: number) {
+  const accessToken = await getAccessToken(connectionId);
+  if (!accessToken) return [];
 
-    const now = new Date();
-    const start = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const params = new URLSearchParams({
-      startDateTime: start.toISOString(),
-      endDateTime: now.toISOString(),
-      $orderby: 'start/dateTime desc',
-      $top: '50',
-    });
-    const graphRes = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!graphRes.ok) {
-      const body = await graphRes.text();
-      console.error('Graph calendarView failed', body);
-      return res.status(502).json({ error: 'Could not read Outlook calendar' });
-    }
-    const data = await graphRes.json() as { value: Array<{ subject: string; start: { dateTime: string }; end: { dateTime: string } }> };
-    res.json(data.value.map(e => ({
-      subject: e.subject,
-      start: e.start.dateTime,
-      end: e.end.dateTime,
-    })));
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not read Outlook calendar' });
+  const now = new Date();
+  const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    startDateTime: start.toISOString(),
+    endDateTime: now.toISOString(),
+    $orderby: 'start/dateTime desc',
+    $top: '50',
+  });
+  const graphRes = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!graphRes.ok) {
+    console.error('Graph calendarView failed', await graphRes.text());
+    return [];
   }
-});
+  const data = await graphRes.json() as { value: Array<{ subject: string; start: { dateTime: string }; end: { dateTime: string } }> };
+  return data.value;
+}
+
+// Lists recent calendar events across every connected account, so the user
+// can pick one to prefill a log entry, rather than retyping what a meeting
+// was about. Each event is tagged with which account it came from.
+router.get('/events', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
+  requireMsConfig();
+  const connections = await pool.query(
+    'SELECT id, ms_email FROM ms_connections WHERE user_id = $1 ORDER BY connected_at ASC',
+    [req.user!.id]
+  );
+  if (connections.rows.length === 0) return res.status(400).json({ error: 'Outlook is not connected' });
+
+  const allEvents: Array<{ subject: string; start: string; end: string; account: string | null }> = [];
+  for (const conn of connections.rows) {
+    const events = await fetchEventsForConnection(conn.id, 14);
+    for (const e of events) {
+      allEvents.push({ subject: e.subject, start: e.start.dateTime, end: e.end.dateTime, account: conn.ms_email });
+    }
+  }
+  allEvents.sort((a, b) => new Date(b.start).getTime() - new Date(a.start).getTime());
+  res.json(allEvents.slice(0, 50));
+}));
 
 // Suggestions pulled automatically in the background — see
 // src/services/outlookSync.ts. Never auto-logged, always pending review.
 router.get('/suggestions', requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
   const result = await pool.query(
-    `SELECT id, subject, event_start, event_end, suggested_category_ids
-     FROM outlook_suggestions
-     WHERE user_id = $1 AND status = 'pending'
-     ORDER BY event_start DESC
+    `SELECT os.id, os.subject, os.event_start, os.event_end, os.suggested_category_ids, mc.ms_email AS account
+     FROM outlook_suggestions os
+     LEFT JOIN ms_connections mc ON mc.id = os.ms_connection_id
+     WHERE os.user_id = $1 AND os.status = 'pending'
+     ORDER BY os.event_start DESC
      LIMIT 25`,
     [req.user!.id]
   );
