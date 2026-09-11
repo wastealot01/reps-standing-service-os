@@ -89,6 +89,24 @@ the correct tenant-specific endpoint automatically once it's set.
 Until those variables are set, the "Connect Outlook" button will fail
 with a clear error rather than silently doing nothing.
 
+## Weekly email reminders
+
+Every Friday, each user gets an email summarizing the past week's hours and
+their pace toward 750 for the year. This needs a free
+[Resend](https://resend.com) account:
+
+1. Sign up at resend.com and go to **API Keys → Create API Key**. Copy it —
+   this is `RESEND_API_KEY`.
+2. For `EMAIL_FROM`, Resend's shared `onboarding@resend.dev` sender works
+   immediately with no setup, format it as
+   `REPS Standing <onboarding@resend.dev>`. To send from your own domain
+   instead, verify it under **Domains** in Resend first, then use
+   `REPS Standing <reminders@yourdomain.com>`.
+3. Set both as environment variables on the Render web service.
+
+Until `RESEND_API_KEY` is set, the reminder job checks in the background
+but silently does nothing — no error, no button to fail, it just skips.
+
 ## What's intentionally NOT in v1
 
 - File attachments — the evidence field is a text reference only (a calendar invite

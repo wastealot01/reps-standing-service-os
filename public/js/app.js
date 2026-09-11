@@ -241,6 +241,7 @@ function renderOutlookInfoModal() {
 
 function renderApp() {
   root.innerHTML = `
+    ${renderInstallBanner()}
     <div class="card">
       <div class="topbar">
         <div class="brand-sm">${markSvg(13)} REPS Standing</div>
@@ -260,6 +261,16 @@ function renderApp() {
   `;
   document.getElementById('logoutBtn').onclick = () => { API.clearToken(); state.screen = 'auth'; render(); };
   document.getElementById('helpBtn').onclick = () => { state.walkthroughStep = 0; state.showWalkthrough = true; renderApp(); };
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn) installBtn.onclick = async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    renderApp();
+  };
+  const installDismiss = document.getElementById('installDismiss');
+  if (installDismiss) installDismiss.onclick = dismissInstallBanner;
 
   const outlookCancel = document.getElementById('outlookInfoCancel');
   if (outlookCancel) outlookCancel.onclick = () => { state.showOutlookInfo = false; renderApp(); };
@@ -660,6 +671,51 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str || '';
   return div.innerHTML;
+}
+
+// --- Home screen install prompt ---
+// Chrome/Android fire a real event we can hook a button to. iOS Safari has
+// no such event — Add to Home Screen there is manual, so we just show
+// instructions instead. Either way, skip it entirely if already installed,
+// or if the person already dismissed it once.
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (state.screen !== 'auth') renderApp();
+});
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function installDismissed() {
+  try { return !!localStorage.getItem('reps-install-dismissed'); } catch (e) { return false; }
+}
+function shouldShowInstallBanner() {
+  if (isStandalone() || installDismissed()) return false;
+  return isIos() || !!deferredInstallPrompt;
+}
+function dismissInstallBanner() {
+  try { localStorage.setItem('reps-install-dismissed', '1'); } catch (e) {}
+  renderApp();
+}
+function renderInstallBanner() {
+  if (!shouldShowInstallBanner()) return '';
+  const text = isIos()
+    ? 'Add REPS Standing to your Home Screen: tap the Share icon, then "Add to Home Screen."'
+    : 'Install REPS Standing for quicker access, no App Store needed.';
+  return `
+    <div class="install-banner">
+      <span>${text}</span>
+      <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+        ${!isIos() ? '<div class="install-btn" id="installBtn">Install</div>' : ''}
+        <div class="install-x" id="installDismiss">×</div>
+      </div>
+    </div>
+  `;
 }
 
 (async function init() {

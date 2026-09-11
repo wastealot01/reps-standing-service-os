@@ -12,6 +12,7 @@ import settingsRoutes from './routes/settings';
 import exportRoutes from './routes/export';
 import outlookRoutes from './routes/outlook';
 import { syncAllConnectedUsers } from './services/outlookSync';
+import { maybeSendWeeklyReminders } from './services/emailReminders';
 
 const app = express();
 
@@ -53,3 +54,10 @@ app.listen(port, () => console.log(`REPS Standing listening on port ${port}`));
 const SYNC_INTERVAL_MS = 3 * 60 * 60 * 1000;
 setTimeout(() => syncAllConnectedUsers(), 60 * 1000);
 setInterval(() => syncAllConnectedUsers(), SYNC_INTERVAL_MS);
+
+// Weekly email digest — checked on the same cadence as the Outlook sync,
+// but maybeSendWeeklyReminders only actually sends once per calendar week
+// (Fridays), guarded by the reminder_runs table so repeated checks never
+// double-send.
+setTimeout(() => maybeSendWeeklyReminders(), 90 * 1000);
+setInterval(() => maybeSendWeeklyReminders(), SYNC_INTERVAL_MS);

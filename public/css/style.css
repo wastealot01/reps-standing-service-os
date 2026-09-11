@@ -114,6 +114,7 @@ body{
       "tabbar content";
   }
   .auth-card{ max-width:640px; padding:52px 56px 40px; }
+  .install-banner{ max-width:1280px; }
   .auth-card .brand-name{ font-size:24px; }
   .auth-card .mark-lg{ width:52px; height:52px; }
   .auth-card .intro-panel{ padding:20px 24px; }
@@ -215,3 +216,7 @@ input[type="date"]{ color-scheme: dark; }
 .outlook-account-email{ font-size:12px; color:var(--w90); }
 .outlook-account-x{ font-size:10.5px; font-weight:600; color:var(--w50); cursor:pointer; }
 .outlook-account-x:hover{ color:#e08a8a; }
+
+.install-banner{ width:100%; max-width:420px; margin:0 auto 14px; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:11.5px; color:var(--w70); line-height:1.4; }
+.install-btn{ font-size:11px; font-weight:600; color:var(--gold-light); background:rgba(216,170,110,0.14); border:1px solid rgba(216,170,110,0.4); border-radius:100px; padding:6px 14px; cursor:pointer; white-space:nowrap; }
+.install-x{ font-size:16px; color:var(--w30); cursor:pointer; padding:0 4px; }
